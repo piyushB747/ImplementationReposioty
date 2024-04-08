@@ -1,0 +1,95 @@
+package net.lif.service;
+
+import java.util.Properties;
+
+import org.springframework.stereotype.Service;
+
+import jakarta.mail.Authenticator;
+import jakarta.mail.Message;
+import jakarta.mail.MessagingException;
+import jakarta.mail.PasswordAuthentication;
+import jakarta.mail.Session;
+import jakarta.mail.Transport;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeBodyPart;
+import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
+
+@Service
+public class ServiceSendMail {
+
+	 public static void main(String[] args) {
+
+
+		 /*
+		  * 1.ADD THIS DEPENDENCY  JAVA MAIL You will Find this dependency in STARTER
+		  * 
+
+	        <dependency>
+			 <groupId>org.springframework.boot</groupId>
+			 <artifactId>spring-boot-starter-mail</artifactId>
+			</dependency>
+
+           2. This Dependency Include 
+           <dependency>
+		    <groupId>org.eclipse.angus</groupId>
+		    <artifactId>angus-mail</artifactId>
+		    <version>2.0.1</version>
+		</dependency>
+           
+           
+           3. Reference :=>   https://www.baeldung.com/java-email
+           4. Error Might  You face
+           jakarta.mail.AuthenticationFailedException: 535-5.7.8 Username and Password not accepted. For more information, go to
+			535 5.7.8  https://support.google.com/mail/?p=BadCredentials b15-20020aa7870f000000b006eae2d9298esm5833186pfo.194 - gsmtp
+			
+				at org.eclipse.angus.mail.smtp.SMTPTransport$Authenticator.authenticate(SMTPTransport.java:954)
+				
+				TO SOLVE THIS ERROR YOU HAVE TO FIRST ENABLE 2 FACTOR AUTHENTICATION
+				AND THEN IN APP PASSWORD YOU HAVE TO GENERATE PASSWORD
+				
+				
+           
+	        */
+	        Properties prop = new Properties();
+	        prop.put("mail.smtp.auth", true);
+	        prop.put("mail.smtp.starttls.enable", "true");
+	        prop.put("mail.smtp.host", "smtp.gmail.com");
+	        prop.put("mail.smtp.port", "25");
+	        prop.put("mail.smtp.ssl.trust", "smtp.gmail.com");
+	        
+	     
+	        
+	        Session session = Session.getInstance(prop, new Authenticator() {
+	            @Override
+	            protected PasswordAuthentication getPasswordAuthentication() {
+	            	 return new PasswordAuthentication("singhrajpiyush@gmail.com", "moqqqogphxdgjyeul");
+	            }
+	        });
+	        
+
+	        try {
+	        	Message message = new MimeMessage(session);
+	        	message.setFrom(new InternetAddress("singhrajpiyush@gmail.com"));
+	        	message.setRecipients(
+	        	  Message.RecipientType.TO, InternetAddress.parse("piyushraj.singh@fortune4.in"));
+	        	message.setSubject("Mail Subject");
+
+	        	String msg = "Roman Lost WWE Undisputed Championship";
+
+	        	MimeBodyPart mimeBodyPart = new MimeBodyPart();
+	        	mimeBodyPart.setContent(msg, "text/html; charset=utf-8");
+
+	        	MimeMultipart multipart = new MimeMultipart();
+	        	multipart.addBodyPart(mimeBodyPart);
+
+	        	message.setContent(multipart);
+
+	        	Transport.send(message);
+	        	System.out.println("SEND SUCCESSFULLY");
+	        } catch (MessagingException mex) {
+	            mex.printStackTrace();
+	        }
+	    }
+	
+}
