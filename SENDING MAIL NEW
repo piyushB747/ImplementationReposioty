@@ -1,0 +1,176 @@
+package com.fortune4.cms.endpoints;
+
+
+import java.util.HashMap;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.fortune4.cms.commons.Constants;
+import com.fortune4.cms.customrepository.CustomRepo;
+import com.fortune4.cms.entity.EntityTableConfig;
+import com.fortune4.cms.repository.RepoEntityTableConfig;
+import com.fortune4.cms.service.ServiceSendMail;
+
+import lombok.AllArgsConstructor;
+
+import jakarta.mail.Authenticator;
+import jakarta.mail.Message;
+import jakarta.mail.MessagingException;
+import jakarta.mail.PasswordAuthentication;
+import jakarta.mail.Session;
+import jakarta.mail.Transport;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeBodyPart;
+import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Properties;
+import java.util.List;
+import java.util.Map;
+@AllArgsConstructor
+@RestController
+@RequestMapping("/apisendmail")
+public class EndpointsSendMail {
+
+	private ServiceSendMail serviceSendMail;
+	private RepoEntityTableConfig repoEntityTableConfig;
+	private CustomRepo customRepo;
+	
+	@PostMapping
+	public ResponseEntity<?> findAllPermission(@RequestParam("name") MultipartFile multipartFile,
+			@RequestParam("subject") String strSubject, @RequestParam("message") String strMessage,
+			@RequestParam("To") String strTos) throws IOException {
+
+		while (strTos.startsWith(",")) {
+			strTos = strTos.substring(1, strTos.length());
+		}
+
+		while (strTos.endsWith(",")) {
+			strTos = strTos.substring(0, strTos.length() - 1);
+		}
+
+		String[] lstArrayOfReceipts = null;
+		if (strTos.contains(",")) {
+			lstArrayOfReceipts = strTos.split(",");
+		}
+
+		String strQuery ="select key,value from tbl_config where key "
+				+ " in ('SMTP_HOST','SMTP_PORT','SMTP_USERNAME','SMTP_PASSWORD','SSL_TRUST') and status=1";
+		
+		List<Object[]> objList  = customRepo.selectFromQuery(strQuery);
+		
+		
+		Map<String, String> strHashMap = new HashMap<String,String>();
+		
+		if(objList!=null & objList.isEmpty()==false) {
+			
+			for(Object[] obj: objList) {
+				String $key = String.valueOf(obj[0]);
+				String $Value = String.valueOf(obj[1]);
+				strHashMap.put($key, $Value);
+			}
+			
+			for(Map.Entry<String, String> str:strHashMap.entrySet()) {
+				System.out.println("Key "+str.getKey()+" Value= "+str.getValue());
+			}
+		
+
+		}
+		String smtpHost = strHashMap.get("SMTP_HOST");
+		String smtpPort = strHashMap.get("SMTP_PORT");
+		String strUserName =  strHashMap.get("SMTP_USERNAME");
+		String strPasswrod =  strHashMap.get("SMTP_PASSWORD");
+		String sslTrust = strHashMap.get("SSL_TRUST");
+		
+		Properties prop = new Properties();
+		prop.put("mail.smtp.auth", true);
+		prop.put("mail.smtp.starttls.enable", "true");
+		prop.put("mail.smtp.host", smtpHost);
+		prop.put("mail.smtp.port", smtpPort);
+		prop.put("mail.smtp.ssl.trust", sslTrust);
+
+		Session session = Session.getInstance(prop, new Authenticator() {
+			@Override
+			protected PasswordAuthentication getPasswordAuthentication() {
+				//return new PasswordAuthentication("singhrajpiyush@gmail.com", "rsjfocjapbxfaudt");
+				return new PasswordAuthentication(strUserName, strPasswrod);
+			}
+		});
+
+		
+	
+		
+		try {
+			Message message = new MimeMessage(session);
+			message.setFrom(new InternetAddress(strUserName));
+
+			if (lstArrayOfReceipts != null) {
+				// message.setRecipients(Message.RecipientType.TO,
+				// InternetAddress.parse("piyushraj.singh@fortune4.in"));
+
+				/** ADDING MAIN RECEIPT **/
+				message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(lstArrayOfReceipts[0]));
+
+				String strCCC = "";
+				for (int i = 1; i < lstArrayOfReceipts.length; i++) {
+					if (strCCC.equals("")) {
+						strCCC = lstArrayOfReceipts[i];
+					} else {
+						strCCC = strCCC + "," + lstArrayOfReceipts[i];
+					}
+				}
+
+				while (strCCC.startsWith(",")) {
+					strCCC = strCCC.substring(1, strCCC.length());
+				}
+
+				while (strCCC.endsWith(",")) {
+					strCCC = strCCC.substring(0, strCCC.length() - 1);
+				}
+				System.out.println(Constants.ANSI_GREEN + " " + strCCC);
+
+				/** ADDING RECEIPTS IN THE CC **/
+				message.setRecipients(Message.RecipientType.CC, InternetAddress.parse(strCCC));
+
+				
+				/** ADDING RECEIPTS IN THE BCC **/
+				// message.setRecipients(Message.RecipientType.BCC,
+				// InternetAddress.parse("bcc@example.com"));
+			} else {
+				message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(strTos));
+			}
+
+			message.setSubject(strSubject);
+
+			String msg = "Roman Lost WWE Undisputed Championship";
+			MimeMultipart multipart = new MimeMultipart();
+
+			MimeBodyPart mimeBodyPart1 = new MimeBodyPart();
+			mimeBodyPart1.setContent(strMessage, "text/html; charset=utf-8");
+
+			MimeBodyPart mimeBodyPart2 = new MimeBodyPart();
+			mimeBodyPart2.setFileName(multipartFile.getOriginalFilename());
+			mimeBodyPart2.setContent(multipartFile.getBytes(), multipartFile.getContentType());
+
+			multipart.addBodyPart(mimeBodyPart1);
+			multipart.addBodyPart(mimeBodyPart2);
+
+			message.setContent(multipart);
+
+		    Transport.send(message);
+			System.out.println("SEND SUCCESSFULLY");
+		} catch (MessagingException mex) {
+			mex.printStackTrace();
+		}
+
+		return null;
+	}
+}
