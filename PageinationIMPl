@@ -1,0 +1,300 @@
+JSON PAGEINATION CONCEPT
+
+JSONPAGEINATION FILE
+
+@Data
+public class JsonPageination {
+
+	
+	public List<EntityUser> payloadRegistrations;
+	public List<EntityRole> payloadRole;
+	public List<PayloadPermissionsMaster> permissionMaster;
+	public List<EntityTableConfig> tableconfig;
+	
+	 private int intPageNo;
+	 private int intPageSize;
+     private long totalElements;
+	 private int totalPages;
+	 private boolean last;
+	
+}
+
+
+JSONPAGEINATION CODE
+
+
+	@PostMapping("/mailsettingv1")
+	public ResponseEntity<?> getListOfMailV1(HttpSession session, @RequestBody String payload) {
+
+		String strUserInfo = (String) session.getAttribute("userinfoUUID");
+
+		EntityUser entityUser = (EntityUser) session.getAttribute("userInfoEntity");
+		if (entityUser == null || strUserInfo == null) {
+			return null;
+		}
+		System.out.println(Constants.ANSI_GREEN + " METHOD = getListOfMailV1");
+		System.out.println(payload);
+
+		JSONObject jsonObjectb = new JSONObject(payload);
+		try {
+
+			String userId = jsonObjectb.getString("loggedUserId");
+
+			boolean userLoggedIsAdmin = jsonObjectb.getBoolean("isLoggedInUserAdmin"); // Retrieve as boolean
+
+			System.out.println("userId " + userId);
+			System.out.println("user is ADMIN =  " + userLoggedIsAdmin);
+
+			String sortDirection = "Desc";
+			Sort strSorting = sortDirection.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by("id").ascending()
+					: Sort.by("id").descending();
+
+			Pageable pageable = PageRequest.of(0, 10, strSorting);
+
+			Page<EntityTableConfig> pageObjEntityPost = repoEntityTableConfig.returnListOfPageination(pageable);
+
+			List<EntityTableConfig> lobjListTableContent = pageObjEntityPost.getContent();
+			if (lobjListTableContent.isEmpty() == false) {
+				JsonPageination jsonResponse = new JsonPageination();
+
+				jsonResponse.setTableconfig(lobjListTableContent);
+				jsonResponse.setIntPageNo(pageObjEntityPost.getNumber());
+				jsonResponse.setIntPageSize(pageObjEntityPost.getSize());
+				jsonResponse.setTotalElements(pageObjEntityPost.getTotalElements());
+				jsonResponse.setTotalPages(pageObjEntityPost.getTotalPages());
+				jsonResponse.setLast(pageObjEntityPost.isLast());
+				return new ResponseEntity<>(jsonResponse,HttpStatus.OK);
+			}
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+
+		return null;
+	}
+
+
+// JSON PAGEINATION FOR HTML CSS
+
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <title>Dashboard - NiceAdmin Bootstrap Template</title>
+	<th:block data-th-replace="~{fragments/frag_general :: general}">
+</head>
+
+<body>
+
+  
+    <!-- ======= Header Starts======= -->
+  <div th:insert="~{fragments/frag_navcommon :: navcommon}"></div>
+  <!-- ======= Header Ends ======= -->
+  
+
+<!-- ======= Sidebar ======= -->
+  <div th:insert="~{fragments/frag_sidebarcommon :: sidecommon}"></div>
+<!-- End Sidebar-->
+  
+
+  <main id="main" class="main">
+
+    <div class="pagetitle">
+      <h1>Setting</h1>
+      <nav>
+        <ol class="breadcrumb">
+         					<li class="breadcrumb-item"><a th:href="@{/admin}">Home</a></li>
+          <li class="breadcrumb-item active">Email Setting</li>
+        </ol>
+      </nav>
+    </div><!-- End Page Title -->
+
+    <section class="section dashboard">
+
+      <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Role list</h5>
+                   <button type="button" id="createButton" class="btn btn-outline-info" style="float: right;margin-top:-55px" onclick="createRoleProcess(event)">CREATE</button>
+                  <!-- Table with hoverable rows -->
+                  <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th scope="col">Sr. No.</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Detail View</th>
+                        </tr>
+                        </thead>
+                        <tbody id="tbodyshorturl">
+                           
+                        </tbody>
+                    </table>
+                </div>
+                <!--<nav class="mt-4" aria-label="Page navigation example mt-5">
+                    <ul class="pagination justify-content-center">
+                      <li class="page-item">
+                        <a class="page-link" href="#" aria-label="Previous">
+                          <span aria-hidden="true">&laquo;</span>
+                        </a>
+                      </li>
+                      <li class="page-item"><a class="page-link active" href="#">1</a></li>
+                      <li class="page-item"><a class="page-link" href="#">2</a></li>
+                      <li class="page-item"><a class="page-link" href="#">3</a></li>
+                      <li class="page-item">
+                        <a class="page-link" href="#" aria-label="Next">
+                          <span aria-hidden="true">&raquo;</span>
+                        </a>
+                      </li>
+                    </ul-->
+                  </nav>
+                  <!-- End Table with hoverable rows -->
+    
+                </div>
+              </div>
+        </div>
+      </div>
+
+    </section>
+ <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+ 
+<script th:inline="javascript"> 
+	
+	
+	function createRoleProcess(event){
+		 event.preventDefault();
+		   console.log("Begains Creation Of ROLE");
+		   
+		    var loggedUserId  = /*[[${userid}]]*/ '';
+		 	var urlForPost = /*[[@{/managerole/createnewrole}]]*/ +"";
+		 	
+		    urlForPost = urlForPost + "?id=" + loggedUserId;
+		    console.log(urlForPost + " URL FOR POST");
+		    window.location.href = urlForPost;
+	}
+
+	
+	
+		function populateTable(users) {
+			var tbody = $('#tbodyshorturl');
+			tbody.empty(); // Clear existing table data
+			$.each(users, function (index, user) {
+				var row = '<tr>' +
+					'<td>' + (index + 1) + '</td>' +
+					'<td>' + user.roleName + '</td>' +
+					'<td><a href="#" onclick="showDetailView(' + user.id + ', \'' + user.roleName + '\', event);"><i class="bi bi-eye-fill"></i></a></td>'
+					'</tr>';
+				tbody.append(row); // Append row to the table body
+			});
+		}
+
+function showDetailView(userId, userName, event) {
+    event.preventDefault();
+    var urlForPost = /*[[@{/managerole/detailedview}]]*/ +"";
+    urlForPost = urlForPost + "?id=" + userId;
+    console.log(urlForPost + " URL FOR POST");
+    window.location.href = urlForPost;
+}
+
+
+        // Function to make REST API call and populate the table
+     function fetchMailSetting(pageNo, pageSize, sortBy, sortDir) {
+		 
+		 
+		 var urlForPost = /*[[@{/endpointsetting/mailsettingv1}]]*/ +"";
+		 var isLoggedInUserAdmin = /*[[${isLoggedInUserAdmin}]]*/ '';
+		 var loggedUserId = /*[[${userid}]]*/ '';
+    
+    $.ajax({
+        url: urlForPost, // API endpoint URL
+        type: 'POST',
+        contentType: 'application/json', // Set content type to JSON
+        data: JSON.stringify({
+            pageNo: pageNo,
+            pageSize: pageSize,
+            sortBy: sortBy,
+            sortDir: sortDir,
+            loggedUserId:loggedUserId,
+            isLoggedInUserAdmin:isLoggedInUserAdmin
+            
+        }), // Pass the data as JSON
+        success: function(response) {
+            var users = response.payloadRole;
+            populateTable(users); // Populate the table with user data
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching users:', error);
+        }
+    });
+}
+
+
+        $(document).ready(function() {
+            // Initial fetch of users when the page loads
+                fetchMailSetting(0, 10, 'id', 'asc'); // Example values for page size, sort by, and sort direction
+
+            // Event handler for pagination clicks
+            $('#pagination').on('click', 'a.page-link', function(e) {
+                e.preventDefault();
+                var pageNo = parseInt($(this).text()) - 1; // Get the page number from the pagination link
+                fetchMailSetting(pageNo); // Fetch users for the selected page
+            });
+        });
+        
+        populatePagination(4); // Example total pages value (replace with actual total pages from API response)
+
+
+   function populatePagination(totalPages) {
+    var pagination = $('#pagination');
+    pagination.empty(); // Clear existing pagination links
+    
+    // Add Previous button
+    pagination.append('<li class="page-item"><a class="page-link" href="#" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>');
+    
+    // Add page numbers
+    for (var i = 0; i < totalPages; i++) {
+        var pageNumber = i + 1;
+        pagination.append('<li class="page-item"><a class="page-link" href="#">' + pageNumber + '</a></li>');
+    }
+    
+    // Add Next button
+    pagination.append('<li class="page-item"><a class="page-link" href="#" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>');
+}
+
+// Event handler for pagination clicks
+		$('#pagination').on('click', 'a.page-link', function(e) {
+		    e.preventDefault();
+		    var pageNo = parseInt($(this).text()) - 1; // Get the page number from the pagination link
+		    fetchMailSetting(pageNo, 10, 'id', 'asc'); // Example values for page size, sort by, and sort direction
+		});
+window.onload = function() {
+	           fetchNotification();
+			    var urlParams = new URLSearchParams(window.location.search);
+			    var type = urlParams.get('type');
+			    var errorMessage = urlParams.get('errormessage');
+			     
+			    if(type!=null && errorMessage!=null){
+					console.log("Type:", type);
+					console.log("Error Message:", errorMessage);
+					$.toast({
+					    heading: 'Error',
+					    text: errorMessage,
+					    showHideTransition: 'slide',
+					    position: 'top-left',
+					    icon: 'error'
+					    
+					})
+				} 
+			     
+			}
+</script>
+	
+  </main><!-- End #main -->
+
+  <!-- ======= Footer ======= -->
+<div th:insert="~{fragments/frag_commonfooter :: footcommon}"></div>
+  <!-- ======= Footer ======= -->
+  <div th:insert="~{fragments/frag_generaljs :: generaljs}"></div>
+</body>
+
+</html>
